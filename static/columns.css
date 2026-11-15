@@ -1,0 +1,229 @@
+/* ============ COLUMNS.CSS - Clean Column Styles ============ */
+
+.columns-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-items: stretch;
+}
+
+/* Responsive: shrink columns on smaller screens */
+@media (min-width: 1200px) {
+    .columns-container {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+    .columns-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (max-width: 767px) {
+    .columns-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 480px) {
+    .columns-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.columns-head {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.column-box {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: box-shadow .2s ease;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-self: start;
+}
+
+.column-box:hover {
+    border-color: var(--color-primary);
+    background: var(--bg-input);
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.column-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+    flex: 1;
+}
+
+.column-name input {
+    font: inherit;
+    padding: 2px 6px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg-input);
+    color: var(--color-text);
+    width: auto;
+    min-width: 60px;
+    outline: none;
+}
+
+.column-name input:focus {
+    border: 1px solid var(--color-primary);
+}
+
+.column-dtype {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.column-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+.delete-btn {
+    background: var(--color-danger);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 70px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(220, 38, 38, 0.3);
+}
+
+.delete-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.2);
+}
+
+/* File Operations Section */
+.file-operations-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.file-operations {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.operations-pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Pill buttons - Vercel Style */
+.pill {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.pill:hover {
+    background: var(--bg-input-focus);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.pill.secondary {
+    color: var(--text-muted);
+}
+
+.pill.secondary:hover {
+    background: var(--bg-input-focus);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Notepad */
+#operations-notepad {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.notepad-entry {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+.notepad-entry:last-child {
+    border-bottom: none;
+}
+
+.notepad-time {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    margin-right: 8px;
+}
+
+.notepad-action {
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.notepad-details {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    margin-left: 4px;
+}

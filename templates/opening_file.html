@@ -1,0 +1,54 @@
+<div id="columns-container" class="columns-section">
+{% for column in column_names %}
+<div class="column-box" id="column-{{ loop.index }}" data-column="{{ column }}" data-dtype="{{ column_dtypes[loop.index0] }}">
+    <div class="column-header">
+        <div class="column-name">
+                            <form hx-post="/rename/{{ filename }}" hx-target="#detail-content" hx-swap="innerHTML" style="display:inline; margin:0; padding:0;">
+                                <input type="hidden" name="old_name" value="{{ column }}">
+                                <input type="text" name="new_name" value="{{ column }}" required
+                                    style="font:inherit; padding:4px 8px; border:none; border-radius:4px; background:var(--color-card); color:var(--color-text); width:auto; min-width:80px; transition:background 0.2s ease;"
+                                    onfocus="this.style.background='var(--bg-input)'" onblur="this.style.background='var(--color-card)'"
+                                    onclick="event.stopPropagation(); event.preventDefault();">
+                            </form>
+                        </div>
+        <span class="column-dtype">{{ column_dtypes[loop.index0] }}</span>
+    </div>
+    <div class="column-actions">
+        <form hx-post="/delete/{{ filename }}" hx-target="#detail-content" hx-swap="innerHTML">
+            <input type="hidden" name="column" value="{{ column }}">
+            <button type="submit" class="delete-btn">Delete</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="file-operations-section">
+    <p class="file-operations">File Operations</p>
+    <div class="operations-pill-group">
+        <button hx-get="/filter" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Filter</button>
+        <button hx-get="/groupby" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Group By</button>
+        <button hx-get="/orderby" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Order By</button>
+        <button hx-get="/distinct" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Distinct</button>
+        <button hx-get="/join" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Join</button>
+        <button hx-get="/window" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Window</button>
+        <button hx-get="/offset" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Offset</button>
+        <button hx-get="/limit" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Limit</button>
+        <button hx-get="/write" hx-target="#footer-slot" hx-swap="innerHTML" class="pill">Write</button>
+    </div>
+</div>
+
+<div class="file-operations-section phase2-ops">
+    <p class="file-operations">Power Tools</p>
+    <div class="operations-pill-group">
+        <button hx-get="/history" hx-target="#footer-slot" hx-swap="innerHTML" class="pill secondary">📜 History</button>
+        <button hx-get="/column-profile" hx-target="#footer-slot" hx-swap="innerHTML" class="pill secondary">📊 Profile</button>
+        <button hx-get="/export-pipeline" hx-target="#footer-slot" hx-swap="innerHTML" class="pill secondary">📤 Export</button>
+        <button hx-get="/derive" hx-target="#footer-slot" hx-swap="innerHTML" class="pill secondary">➕ Derive</button>
+    </div>
+</div>
+<div id="footer-slot"></div>
+
+<div hx-get="/notepad" hx-trigger="every 2s" hx-target="#operations-notepad" hx-swap="outerHTML" style="display:none"></div>
+
+<script>

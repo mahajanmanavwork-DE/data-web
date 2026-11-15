@@ -1,0 +1,751 @@
+{% extends "index.html" %}
+
+{% block files %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h2>Column Profile — {{ filename }}</h2>
+        <div class="profile-summary">
+            <span class="summary-item"><strong>{{ profiles|length }}</strong> Columns</span>
+            <span class="summary-item"><strong>{{ profiles[0].total_count if profiles else 0 }}</strong> Rows</span>
+            <span class="summary-item"><strong>{{ "%.1f"|format(profiles|selectattr('null_pct')|map(attribute='null_pct')|sum / profiles|length) if profiles else 0 }}%</strong> Avg Null</span>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="profile-tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="details">Details</button>
+        <button class="tab-btn" data-tab="charts">Charts</button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div class="tab-panel active" id="tab-overview">
+        <div class="profile-grid">
+            {% for profile in profiles %}
+            <div class="profile-card" data-column="{{ profile.name }}">
+                <div class="profile-card-header">
+                    <h4 class="col-name">{{ profile.name }}</h4>
+                    <span class="col-dtype">{{ profile.dtype }}</span>
+                </div>
+                
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="stat-value">{{ profile.null_pct }}%</span>
+                        <span class="stat-label">Null</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill null-fill" style="width: {{ profile.null_pct }}%"></div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">{{ profile.unique_count }}</span>
+                        <span class="stat-label">Unique</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill unique-fill" style="width: {{ (profile.unique_count / profile.total_count * 100) if profile.total_count > 0 else 0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if profile.type == 'numeric' %}
+                <div class="numeric-preview">
+                    <span class="range">Range: {{ profile.min|round(2) }} — {{ profile.max|round(2) }}</span>
+                    <span class="mean">μ {{ profile.mean|round(2) }}</span>
+                    <span class="std">σ {{ profile.std|round(2) }}</span>
+                </div>
+                {% elif profile.type == 'categorical' %}
+                <div class="categorical-preview">
+                    <span class="cardinality">{{ profile.unique_count }} distinct values</span>
+                    {% if profile.top_values %}
+                    <div class="top-value">
+                        Top: <strong>{{ profile.top_values[0].value }}</strong> ({{ profile.top_values[0].count }})
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif profile.type == 'datetime' %}
+                <div class="datetime-preview">
+                    <span>Range: {{ profile.min[:10] }} → {{ profile.max[:10] }}</span>
+                    <span>{{ profile.range_days }} days span</span>
+                </div>
+                {% endif %}
+
+                <button class="expand-btn" onclick="showColumnDetail('{{ profile.name }}')">
+                    Details →
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- DETAILS TAB -->
+    <div class="tab-panel" id="tab-details">
+        <div class="details-table-wrapper">
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Type</th>
+                        <th>Null %</th>
+                        <th>Unique</th>
+                        <th>Min</th>
+                        <th>Max</th>
+                        <th>Mean</th>
+                        <th>Std Dev</th>
+                        <th>Top Values</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for profile in profiles %}
+                    <tr>
+                        <td><strong>{{ profile.name }}</strong></td>
+                        <td><code>{{ profile.dtype }}</code></td>
+                        <td>
+                            <div class="mini-bar">
+                                <div class="mini-fill" style="width: {{ profile.null_pct }}%"></div>
+                            </div>
+                            {{ profile.null_pct }}%
+                        </td>
+                        <td>{{ profile.unique_count }}</td>
+                        <td>{{ profile.min if profile.min is not none else '—' }}</td>
+                        <td>{{ profile.max if profile.max is not none else '—' }}</td>
+                        <td>{{ profile.mean|round(2) if profile.mean is not none and profile.mean is defined else '—' }}</td>
+                                                <td>{{ profile.std|round(2) if profile.std is not none and profile.std is defined else '—' }}</td>
+                        <td>
+                            {% if profile.top_values %}
+                            {% for tv in profile.top_values[:3] %}
+                            <span class="top-tag">{{ tv.value }} ({{ tv.count }})</span>
+                            {% endfor %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CHARTS TAB -->
+    <div class="tab-panel" id="tab-charts">
+        <div class="charts-grid">
+            {% for profile in profiles %}
+            {% if profile.histogram %}
+            <div class="chart-card" data-column="{{ profile.name }}">
+                <h4>{{ profile.name }} <small>({{ profile.dtype }})</small></h4>
+                <canvas class="histogram-canvas" 
+                        data-histogram='{{ profile.histogram|tojson }}'
+                        data-column="{{ profile.name }}"></canvas>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- COLUMN DETAIL MODAL -->
+    <div id="column-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop" onclick="closeColumnModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-column-name"></h3>
+                <button class="modal-close" onclick="closeColumnModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.profile-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.profile-summary {
+    display: flex;
+    gap: 24px;
+}
+
+.summary-item {
+    font-size: 14px;
+    color: var(--color-text-muted);
+}
+
+.summary-item strong {
+    color: var(--color-text);
+    font-size: 18px;
+}
+
+.profile-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background: var(--bg-input);
+    color: var(--color-text);
+}
+
+.tab-btn.active {
+    background: var(--color-primary);
+    color: white;
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Profile Grid */
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.profile-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.2s;
+}
+
+.profile-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.profile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.col-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text);
+    word-break: break-word;
+}
+
+.col-dtype {
+    font-size: 11px;
+    background: var(--bg-input);
+    color: var(--color-text-muted);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: monospace;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-bar {
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.stat-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.null-fill { background: linear-gradient(90deg, #ef4444, #f87171); }
+.unique-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+
+.numeric-preview, .categorical-preview, .datetime-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.numeric-preview span, .datetime-preview span {
+    background: var(--bg-input);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: monospace;
+}
+
+.categorical-preview .cardinality {
+    font-weight: 500;
+}
+
+.categorical-preview .top-value {
+    color: var(--color-text);
+}
+
+.expand-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--color-text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.expand-btn:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+/* Details Table */
+.details-table-wrapper {
+    overflow-x: auto;
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.details-table th,
+.details-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.details-table th {
+    background: var(--bg-card);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+}
+
+.details-table tbody tr:hover {
+    background: rgba(94, 106, 210, 0.03);
+}
+
+.mini-bar {
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 80px;
+}
+
+.mini-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.top-tag {
+    display: inline-block;
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+/* Charts */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.chart-card h4 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.chart-card small {
+    color: var(--color-text-muted);
+    font-weight: 400;
+}
+
+.histogram-canvas {
+    width: 100%;
+    height: 200px;
+    max-height: 200px;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--color-text);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+@media (max-width: 768px) {
+    .profile-container {
+        padding: 16px;
+    }
+    
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-summary {
+        gap: 12px;
+    }
+}
+</style>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        
+        // Initialize charts when charts tab is shown
+        if (this.dataset.tab === 'charts') {
+            initHistograms();
+        }
+    });
+});
+
+// Histogram rendering
+function initHistograms() {
+    document.querySelectorAll('.histogram-canvas').forEach(canvas => {
+        if (canvas.dataset.rendered) return;
+        canvas.dataset.rendered = 'true';
+        
+        const ctx = canvas.getContext('2d');
+        const data = JSON.parse(canvas.dataset.histogram);
+        const counts = data.counts;
+        const bins = data.bins;
+        
+        if (!counts || counts.length === 0) return;
+        
+        const maxCount = Math.max(...counts);
+        const padding = 20;
+        const w = canvas.width = canvas.offsetWidth;
+        const h = canvas.height = canvas.offsetHeight;
+        const barWidth = (w - 2 * padding) / counts.length;
+        
+        // Draw axes
+        ctx.strokeStyle = 'var(--border-subtle)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, h - padding);
+        ctx.lineTo(w - padding, h - padding);
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, h - padding);
+        ctx.stroke();
+        
+        // Draw bars
+        counts.forEach((count, i) => {
+            const barHeight = (count / maxCount) * (h - 2 * padding);
+            const x = padding + i * barWidth;
+            const y = h - padding - barHeight;
+            
+            // Gradient
+            const gradient = ctx.createLinearGradient(0, h - padding, 0, padding);
+            gradient.addColorStop(0, 'rgba(94, 106, 210, 0.3)');
+            gradient.addColorStop(1, 'rgba(94, 106, 210, 0.9)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x + 1, y, barWidth - 2, barHeight);
+            
+            // Bin label (every nth)
+            if (i % Math.max(1, Math.floor(counts.length / 8)) === 0) {
+                ctx.fillStyle = 'var(--color-text-muted)';
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(bins[i].toFixed(1), x + barWidth / 2, h - padding + 14);
+            }
+        });
+        
+        // Tooltip on hover
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const i = Math.floor((x - padding) / barWidth);
+            if (i >= 0 && i < counts.length) {
+                const binStart = bins[i].toFixed(2);
+                const binEnd = bins[i + 1].toFixed(2);
+                canvas.title = `Bin ${i}: [${binStart}, ${binEnd}) — ${counts[i]} rows`;
+            }
+        });
+    });
+}
+
+// Column detail modal
+async function showColumnDetail(columnName) {
+    const modal = document.getElementById('column-modal');
+    const modalTitle = document.getElementById('modal-column-name');
+    const modalBody = document.getElementById('modal-body');
+    const filename = "{{ filename }}";
+    
+    modalTitle.textContent = columnName;
+    modalBody.innerHTML = '<div class="loading">Loading details...</div>';
+    modal.style.display = 'flex';
+    
+    try {
+        const response = await fetch(`/column-stats/${filename}/${encodeURIComponent(columnName)}`);
+        const data = await response.json();
+        renderColumnModal(data, modalBody);
+    } catch (e) {
+        modalBody.innerHTML = '<div class="error">Failed to load column details</div>';
+    }
+}
+
+function renderColumnModal(data, container) {
+    let html = `
+        <div class="modal-stats">
+            <div class="stat-row">
+                <span class="stat-label">Type:</span>
+                <span class="stat-value"><code>${data.dtype}</code></span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Rows:</span>
+                <span class="stat-value">${data.total.toLocaleString()}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Nulls:</span>
+                <span class="stat-value">${data.null_count} (${(data.null_count/data.total*100).toFixed(1)}%)</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Unique:</span>
+                <span class="stat-value">${data.unique_count} (${(data.unique_count/data.total*100).toFixed(1)}%)</span>
+            </div>
+        </div>
+    `;
+    
+    if (data.type === 'numeric') {
+        html += `
+            <h4>Numeric Statistics</h4>
+            <div class="modal-stats">
+                <div class="stat-row"><span class="stat-label">Min:</span><span class="stat-value">${data.min}</span></div>
+                <div class="stat-row"><span class="stat-label">Max:</span><span class="stat-value">${data.max}</span></div>
+                <div class="stat-row"><span class="stat-label">Mean:</span><span class="stat-value">${data.mean.toFixed(4)}</span></div>
+                <div class="stat-row"><span class="stat-label">Median:</span><span class="stat-value">${data.median.toFixed(4)}</span></div>
+                <div class="stat-row"><span class="stat-label">Std Dev:</span><span class="stat-value">${data.std.toFixed(4)}</span></div>
+            </div>
+            <h4>Quantiles</h4>
+            <div class="quantiles-grid">
+        `;
+        Object.entries(data.quantiles).forEach(([k, v]) => {
+            html += `<div class="quantile-item"><span>${k.toUpperCase()}</span><strong>${v.toFixed(2)}</strong></div>`;
+        });
+        html += '</div>';
+        
+        // Full histogram
+        html += '<h4>Distribution (20 bins)</h4>';
+        html += `<canvas id="modal-histogram" width="500" height="200"></canvas>`;
+    } else if (data.type === 'categorical') {
+        html += `
+            <h4>Top Values</h4>
+            <div class="top-values-list">
+        `;
+        data.top_values.forEach((tv, i) => {
+            const pct = (tv.count / data.total * 100).toFixed(1);
+            html += `
+                <div class="top-value-row">
+                    <span class="rank">${i + 1}</span>
+                    <span class="value">${tv.value}</span>
+                    <span class="count">${tv.count}</span>
+                    <span class="pct">${pct}%</span>
+                    <div class="bar"><div class="fill" style="width: ${pct}%"></div></div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        html += `
+            <h4>Length Statistics</h4>
+            <div class="modal-stats">
+                <div class="stat-row"><span class="stat-label">Min Length:</span><span class="stat-value">${data.length_stats.min}</span></div>
+                <div class="stat-row"><span class="stat-label">Max Length:</span><span class="stat-value">${data.length_stats.max}</span></div>
+                <div class="stat-row"><span class="stat-label">Avg Length:</span><span class="stat-value">${data.length_stats.mean.toFixed(1)}</span></div>
+            </div>
+        `;
+    } else if (data.type === 'datetime') {
+        html += `
+            <h4>Date Range</h4>
+            <div class="modal-stats">
+                <div class="stat-row"><span class="stat-label">Min:</span><span class="stat-value">${data.min}</span></div>
+                <div class="stat-row"><span class="stat-label">Max:</span><span class="stat-value">${data.max}</span></div>
+                <div class="stat-row"><span class="stat-label">Span:</span><span class="stat-value">${data.range_days} days</span></div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Render modal histogram for numeric
+    if (data.type === 'numeric') {
+        setTimeout(() => renderModalHistogram(data), 0);
+    }
+}
+
+function renderModalHistogram(data) {
+    const canvas = document.getElementById('modal-histogram');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    // Would need histogram data - fetch from original or approximate
+}
+
+function closeColumnModal() {
+    document.getElementById('column-modal').style.display = 'none';
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeColumnModal();
+    }
+});
+</script>
+{% endblock %}

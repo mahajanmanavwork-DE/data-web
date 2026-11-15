@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Weaber — AI Powered Data Preprocessing</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <!-- PURE CSS THEME SWITCHER -->
+    <div class="theme-switcher-container">
+        <input type="radio" id="theme-vercel" name="theme-option" checked>
+        <label for="theme-vercel" class="theme-switcher-label">⚪ Vercel</label>
+    </div>
+
+    <!-- ============ HERO SECTION ============ -->
+    <section class="hero-section">
+        <div class="hero-bg">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+            <div class="grid-pattern"></div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="hero-badge">🤖 AI Powered • Data Preprocessing</div>
+            <h1>Visual File Data Preprocessing</h1>
+            <p class="hero-subtitle">Transform, clean, and enrich your datasets with SQL-style transformations — every step runs on the server.</p>
+            
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-number">100+</span>
+                    <span class="stat-label">File Operations</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">10x</span>
+                    <span class="stat-label">Faster Processing</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">Zero</span>
+                    <span class="stat-label">Code Required</span>
+                </div>
+            </div>
+            
+            <div class="login-card">
+                <h2>Access Your Workspace</h2>
+                {% if error %}
+                <div class="login-error">{{ error }}</div>
+                {% endif %}
+                <form method="post" action="/login" class="login-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="username" name="username" required autofocus placeholder="Enter username">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="password" name="password" required placeholder="Enter password">
+                        </div>
+                    </div>
+                    
+                    <button class="login-btn" type="submit">
+                        <span>Sign In</span>
+                    </button>
+                </form>
+                
+                <p class="login-hint">First run creates admin user. Change password after login.</p>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

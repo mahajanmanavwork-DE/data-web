@@ -1,0 +1,487 @@
+{% extends "index.html" %}
+
+{% block files %}
+<div class="history-container">
+    <div class="history-header">
+        <h2>Operation History — {{ filename }}</h2>
+        <div class="history-actions">
+            <a href="/export-pipeline" class="btn-secondary">Export Pipeline</a>
+            <a href="/column-profile" class="btn-secondary">Column Profile</a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="dag-canvas-wrapper">
+        <canvas id="dag-canvas" class="dag-canvas"></canvas>
+        <div id="dag-tooltip" class="dag-tooltip"></div>
+    </div>
+
+    <div class="history-legend">
+        <div class="legend-item current"><span class="legend-dot"></span>Current State</div>
+        <div class="legend-item"><span class="legend-dot"></span>Past Operation</div>
+        <div class="legend-item"><span class="legend-dot clickable"></span>Click to Restore</div>
+    </div>
+
+    <div class="history-list">
+        <h3>Operations ({{ nodes|length }})</h3>
+        {% if nodes %}
+        <ul class="history-steps">
+            {% for node_id, node in nodes.items() %}
+            <li class="history-step {% if node_id == current %}current{% endif %}" 
+                data-node-id="{{ node_id }}"
+                hx-post="/history/restore"
+                hx-target="#detail-content"
+                hx-swap="innerHTML"
+                hx-vals='{"target_id": "{{ node_id }}", "csrf_token": "{{ csrf_token }}"}'>
+                <div class="step-info">
+                    <span class="step-type">{{ node.type|upper }}</span>
+                    <span class="step-desc">{{ node.description }}</span>
+                    <span class="step-time">{{ node.timestamp[:19].replace('T', ' ') }}</span>
+                </div>
+                <div class="step-action">
+                    {% if node_id != current %}
+                    <button type="submit" class="restore-btn" title="Restore to this state">⏪</button>
+                    {% else %}
+                    <span class="current-badge">● Current</span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-history">No operations recorded yet. Start transforming your data!</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.history-container {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.history-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.dag-canvas-wrapper {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    min-height: 400px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.dag-canvas {
+    width: 100%;
+    height: 400px;
+    display: block;
+}
+
+.dag-tooltip {
+    position: absolute;
+    background: var(--bg-tooltip);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    font-size: 13px;
+    max-width: 300px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.dag-tooltip.visible {
+    opacity: 1;
+}
+
+.history-legend {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    opacity: 0.4;
+}
+
+.legend-item.current .legend-dot {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.3);
+}
+
+.legend-dot.clickable {
+    cursor: pointer;
+}
+
+.history-list h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--color-text);
+}
+
+.history-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.history-step {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.history-step:hover {
+    border-color: var(--color-primary);
+    background: rgba(94, 106, 210, 0.05);
+}
+
+.history-step.current {
+    border-color: var(--color-primary);
+    background: rgba(94, 106, 210, 0.08);
+}
+
+.step-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.step-type {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    letter-spacing: 0.5px;
+}
+
+.step-desc {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.step-time {
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+.step-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.restore-btn {
+    background: none;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-text-muted);
+    transition: all 0.2s;
+}
+
+.restore-btn:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.current-badge {
+    font-size: 12px;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.empty-history {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: 48px 24px;
+}
+
+@media (max-width: 768px) {
+    .history-container {
+        padding: 16px;
+    }
+    
+    .dag-canvas {
+        height: 300px;
+    }
+    
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+// DAG Visualization
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('dag-canvas');
+    const tooltip = document.getElementById('dag-tooltip');
+    const steps = document.querySelectorAll('.history-step');
+    
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const nodes = {{ nodes|tojson }};
+    const edges = {{ edges|tojson }};
+    const current = "{{ current }}";
+    
+    // Set canvas size
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        drawDAG();
+    }
+    
+    // Layout nodes vertically with branches
+    function computeLayout() {
+        const nodeIds = Object.keys(nodes);
+        if (nodeIds.length === 0) return {};
+        
+        // Build adjacency
+        const children = {};
+        const parents = {};
+        edges.forEach(e => {
+            if (!children[e.from]) children[e.from] = [];
+            children[e.from].push(e.to);
+            parents[e.to] = e.from;
+        });
+        
+        // Find roots
+        const roots = nodeIds.filter(id => !parents[id]);
+        
+        // Assign positions - vertical layout with horizontal branching
+        const positions = {};
+        const levelHeight = 80;
+        const branchWidth = 200;
+        
+        function layoutNode(nodeId, x, y, depth) {
+            positions[nodeId] = { x, y, depth };
+            
+            if (children[nodeId]) {
+                const childCount = children[nodeId].length;
+                const startX = x - (childCount - 1) * branchWidth / 2;
+                children[nodeId].forEach((child, i) => {
+                    layoutNode(child, startX + i * branchWidth, y + levelHeight, depth + 1);
+                });
+            }
+        }
+        
+        roots.forEach((root, i) => {
+            const canvasWidth = canvas.width || 800;
+            const startX = canvasWidth / 2 + (i - (roots.length - 1) / 2) * 300;
+            layoutNode(root, startX, 60, 0);
+        }
+        
+        return positions;
+    }
+    
+    function drawDAG() {
+        if (!nodes || Object.keys(nodes).length === 0) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const positions = computeLayout();
+        
+        // Draw edges first
+        ctx.strokeStyle = 'var(--border-subtle)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        
+        edges.forEach(edge => {
+            const from = positions[edge.from];
+            const to = positions[edge.to];
+            if (!from || !to) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y + 20);
+            // Curved line
+            const midY = (from.y + to.y) / 2;
+            ctx.bezierCurveTo(
+                from.x, midY,
+                to.x, midY,
+                to.x, to.y - 20
+            );
+            ctx.stroke();
+        });
+        
+        ctx.setLineDash([]);
+        
+        // Draw nodes
+        Object.entries(nodes).forEach(([id, node]) => {
+            const pos = positions[id];
+            if (!pos) return;
+            
+            const isCurrent = id === current;
+            const radius = 20;
+            
+            // Node circle
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+            
+            if (isCurrent) {
+                ctx.fillStyle = 'var(--color-primary)';
+                ctx.shadowColor = 'var(--color-primary)';
+                ctx.shadowBlur = 15;
+            } else {
+                ctx.fillStyle = 'var(--bg-card)';
+                ctx.shadowBlur = 0;
+            }
+            ctx.strokeStyle = isCurrent ? 'var(--color-primary)' : 'var(--border-subtle)';
+            ctx.lineWidth = isCurrent ? 3 : 2;
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+            // Icon inside
+            ctx.fillStyle = isCurrent ? 'white' : 'var(--color-text-muted)';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const typeIcons = { filter: '🔍', groupby: '📊', orderby: '↕️', limit: '✂️', offset: '⏭️', distinct: '🔄', join: '🔗', window: '🪟', derive: '➕' };
+            ctx.fillText(typeIcons[node.type] || '⚙️', pos.x, pos.y + 1);
+            
+            // Label below
+            ctx.fillStyle = 'var(--color-text)';
+            ctx.font = '11px Arial';
+            ctx.fillText(node.description.substring(0, 30), pos.x, pos.y + radius + 18);
+            
+            // Current indicator
+            if (isCurrent) {
+                ctx.fillStyle = 'var(--color-primary)';
+                ctx.font = 'bold 10px Arial';
+                ctx.fillText('CURRENT', pos.x, pos.y + radius + 32);
+            }
+        });
+    }
+    
+    // Tooltip on hover
+    canvas.addEventListener('mousemove', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const positions = computeLayout();
+        let found = null;
+        
+        Object.entries(positions).forEach(([id, pos]) => {
+            const dx = x - pos.x;
+            const dy = y - pos.y;
+            if (dx * dx + dy * dy <= 400) { // 20px radius
+                found = { id, pos, node: nodes[id] };
+            }
+        });
+        
+        if (found) {
+            tooltip.innerHTML = `
+                <strong>${found.node.type.toUpperCase()}</strong><br>
+                ${found.node.description}<br>
+                <small>${found.node.timestamp.slice(0,19).replace('T',' ')}</small>
+                ${found.id === current ? '<br><span style="color:var(--color-primary)">● Current state</span>' : '<br><span style="color:var(--color-text-muted)">Click to restore</span>'}
+            `;
+            tooltip.style.left = (found.pos.x + 30) + 'px';
+            tooltip.style.top = (found.pos.y - 30) + 'px';
+            tooltip.classList.add('visible');
+        } else {
+            tooltip.classList.remove('visible');
+        }
+    });
+    
+    canvas.addEventListener('mouseleave', function() {
+        tooltip.classList.remove('visible');
+    });
+    
+    // Click to restore
+    canvas.addEventListener('click', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const positions = computeLayout();
+        
+        Object.entries(positions).forEach(([id, pos]) => {
+            const dx = x - pos.x;
+            const dy = y - pos.y;
+            if (dx * dx + dy * dy <= 400 && id !== current) {
+                // Trigger restore via HTMX
+                const step = document.querySelector(`.history-step[data-node-id="${id}"]`);
+                if (step) {
+                    const form = step.querySelector('form') || step;
+                    if (form.tagName === 'LI') {
+                        // Find the restore button and click it
+                        const btn = step.querySelector('.restore-btn');
+                        if (btn) btn.click();
+                    }
+                }
+            }
+        });
+    });
+    
+    // Highlight corresponding step on canvas hover
+    steps.forEach(step => {
+        step.addEventListener('mouseenter', function() {
+            this.style.background = 'rgba(94, 106, 210, 0.1)';
+        });
+        step.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('current')) {
+                this.style.background = '';
+            }
+        });
+    });
+    
+    // Resize handler
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+});
+</script>
+{% endblock %}

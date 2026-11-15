@@ -1,0 +1,391 @@
+{% extends "index.html" %}
+
+{% block files %}
+<div class="export-container">
+    <div class="export-header">
+        <h2>Export Pipeline — {{ filename }}</h2>
+        <p class="export-subtitle">Generate reproducible code from your operation history</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if not has_operations %}
+    <div class="empty-export">
+        <div class="empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+        </div>
+        <h3>No Operations to Export</h3>
+        <p>Start transforming your data to build a pipeline worth exporting.</p>
+        <a href="/open/{{ filename }}" class="btn-primary">Go to File</a>
+    </div>
+    {% else %}
+    <div class="export-form">
+        <form hx-post="/export-pipeline" hx-target="#export-result" hx-swap="innerHTML" id="export-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <div class="format-options">
+                <h3>Choose Export Format</h3>
+                
+                <label class="format-card {% if selected_format == 'python' %}selected{% endif %}" onclick="selectFormat(this, 'python')">
+                    <input type="radio" name="format" value="python" {% if selected_format == 'python' %}checked{% endif %}>
+                    <div class="format-icon">🐍</div>
+                    <div class="format-info">
+                        <strong>Python Script</strong>
+                        <span>Standalone .py file with pandas operations</span>
+                    </div>
+                </label>
+                
+                <label class="format-card {% if selected_format == 'sql' %}selected{% endif %}" onclick="selectFormat(this, 'sql')">
+                    <input type="radio" name="format" value="sql" {% if selected_format == 'sql' %}checked{% endif %}>
+                    <div class="format-icon">🗄️</div>
+                    <div class="format-info">
+                        <strong>SQL (CTEs)</strong>
+                        <span>Common Table Expressions for any SQL engine</span>
+                    </div>
+                </label>
+                
+                <label class="format-card {% if selected_format == 'dbt' %}selected{% endif %}" onclick="selectFormat(this, 'dbt')">
+                    <input type="radio" name="format" value="dbt" {% if selected_format == 'dbt' %}checked{% endif %}>
+                    <div class="format-icon">⭐</div>
+                    <div class="format-info">
+                        <strong>dbt Model</strong>
+                        <span>Ready for dbt projects with Jinja templating</span>
+                    </div>
+                </label>
+                
+                <label class="format-card {% if selected_format == 'notebook' %}selected{% endif %}" onclick="selectFormat(this, 'notebook')">
+                    <input type="radio" name="format" value="notebook" {% if selected_format == 'notebook' %}checked{% endif %}>
+                    <div class="format-icon">📓</div>
+                    <div class="format-info">
+                        <strong>Jupyter Notebook</strong>
+                        <span>.ipynb with markdown cells and executable code</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="export-options">
+                <h3>Options</h3>
+                <label class="option-row">
+                    <input type="checkbox" name="include_comments" value="1" checked>
+                    <span>Include operation descriptions as comments</span>
+                </label>
+                <label class="option-row">
+                    <input type="checkbox" name="include_types" value="1" checked>
+                    <span>Include dtype annotations</span>
+                </label>
+                <label class="option-row">
+                    <input type="checkbox" name="modular" value="1">
+                    <span>Generate modular functions (Python only)</span>
+                </label>
+            </div>
+
+            <div class="export-actions">
+                <button type="submit" class="btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export Pipeline
+                </button>
+            </div>
+        </form>
+
+        <div id="export-result"></div>
+    </div>
+
+    <!-- Pipeline Preview -->
+    <div class="pipeline-preview">
+        <h3>Pipeline Preview ({{ dag_nodes|length }} operations)</h3>
+        <div class="pipeline-steps">
+            {% for node_id, node in dag_nodes.items() %}
+            <div class="pipeline-step">
+                <span class="step-number">{{ loop.index }}</span>
+                <span class="step-type-badge">{{ node.type|upper }}</span>
+                <span class="step-description">{{ node.description }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.export-container {
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.export-header {
+    margin-bottom: 24px;
+}
+
+.export-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.export-subtitle {
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+.empty-export {
+    text-align: center;
+    padding: 64px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+}
+
+.empty-icon {
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    margin-bottom: 16px;
+}
+
+.empty-export h3 {
+    margin-bottom: 8px;
+}
+
+.empty-export p {
+    color: var(--color-text-muted);
+    margin-bottom: 24px;
+}
+
+/* Format Cards */
+.format-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.format-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 2px solid var(--border-subtle);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.format-card:hover {
+    border-color: var(--color-primary);
+}
+
+.format-card.selected {
+    border-color: var(--color-primary);
+    background: rgba(94, 106, 210, 0.08);
+}
+
+.format-card input {
+    display: none;
+}
+
+.format-icon {
+    font-size: 28px;
+}
+
+.format-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.format-info strong {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.format-info span {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+/* Export Options */
+.export-options {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.export-options h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--color-text);
+}
+
+.option-row:last-child {
+    margin-bottom: 0;
+}
+
+.option-row input {
+    accent-color: var(--color-primary);
+}
+
+/* Export Actions */
+.export-actions {
+    margin-bottom: 24px;
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(94, 106, 210, 0.3);
+}
+
+.btn-lg {
+    padding: 14px 32px;
+    font-size: 15px;
+}
+
+/* Pipeline Preview */
+.pipeline-preview {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 24px;
+}
+
+.pipeline-preview h3 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.pipeline-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.step-number {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.step-type-badge {
+    background: rgba(94, 106, 210, 0.15);
+    color: var(--color-primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.step-description {
+    color: var(--color-text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Export Result */
+#export-result .alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid #10b981;
+    color: #10b981;
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+    .export-container {
+        padding: 16px;
+    }
+    
+    .format-options {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function selectFormat(card, format) {
+    document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    card.querySelector('input').checked = true;
+}
+
+// Show success message after export
+document.getElementById('export-form')?.addEventListener('htmx:afterSwap', function(e) {
+    const result = document.getElementById('export-result');
+    if (result.querySelector('.alert-success')) {
+        // Trigger download
+        const a = document.createElement('a');
+        // The file response should trigger download automatically
+    }
+});
+</script>
+{% endblock %}

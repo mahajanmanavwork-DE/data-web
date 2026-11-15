@@ -1,0 +1,50 @@
+# User data / runtime (do NOT upload)
+input_files/
+output_files/
+.venv/
+__pycache__/
+
+# Storage runtime files (all created by 'dataweb setup' or at runtime)
+storage/metadata.json
+storage/current_key.json
+storage/current_df_key.txt
+storage/registry.json
+storage/history.json
+storage/log_*.json
+storage/operations.json
+storage/operations_log.json
+storage/selected.txt
+storage/users.json
+storage/tunnel_history.log
+storage/*.parquet
+
+# Runtime logs & artifacts
+dataweb.pid
+tunnel.log
+tunnel_url.txt
+uvicorn_stdout.log
+
+# Binary downloads (downloaded by setup if available)
+cloudflared.exe
+cloudflared
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+*.iml

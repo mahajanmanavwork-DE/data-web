@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Data Weaber{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/info_style.css">
+    <link rel="stylesheet" href="/static/operations.css">
+    <link rel="stylesheet" href="/static/columns.css">
+    <link rel="stylesheet" href="/static/modes.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+
+<body>
+
+    <!-- NAVIGATION BAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <h1>Visual File Data Preprocessing</h1>
+            <p>SQL-style transformations over files</p>
+        </div>
+        <div class="nav-right">
+                    <a href="/home?source=home" class="nav-link">Home</a>
+                    <a href="/info" class="nav-link">Features</a>
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+        
+        <!-- TOP BAR: Scan button fixed on left -->
+        <header class="content-header">
+            <div class="header-left">
+                <form action="/scan" method="get" class="scan-form">
+                    <button type="submit" class="scan-btn">Scan Folder</button>
+                </form>
+            </div>
+            <div class="header-right">
+                <span class="file-count" id="file-count">{{ files_content|length }}</span>
+            </div>
+        </header>
+
+        <!-- FILES GRID -->
+        <section class="files-grid-section">
+            {% block files %}
+            {% endblock files %}
+        </section>
+
+        <!-- BOTTOM PANEL: Column Details (opens when file clicked) - INLINE BELOW FILES -->
+        <aside class="detail-panel-inline" id="detail-panel-inline" style="display: none;">
+            <div class="detail-header">
+                <h3 id="detail-filename">File Details</h3>
+                <button class="close-detail-btn" onclick="closeDetailPanel()">×</button>
+            </div>
+            <div class="detail-content" id="detail-content">
+                <div class="columns-container" id="columns-container">
+                    <!-- Columns load here -->
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-handle" id="footer-handle">
+            <span class="footer-label">Operations Panel</span>
+            <button class="footer-toggle" type="button" onclick="document.getElementById('site-footer').classList.toggle('expanded')">
+                ▲
+            </button>
+        </div>
+        <div class="footer-content">
+            <div id="footer-slot"></div>
+        </div>
+    </footer>
+
+    <script>
+            function closeDetailPanel() {
+                document.getElementById('detail-panel-inline').style.display = 'none';
+            }
+        </script>
+    </body>
+    </html>
